@@ -1,0 +1,88 @@
+# FILE: .github/workflows/databricks_gold_prod.yml
+#
+# Purpose:
+# Production dbt deployment.
+# Triggered ONLY by ADF or manual execution.
+# Builds Gold models in Databricks PROD schema.
+#
+# Project:
+# atliq_commerce
+
+name: databricks-gold-prod-pipeline
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  deploy-gold:
+
+    name: Deploy Gold Layer
+    runs-on: ubuntu-latest
+
+    env:
+      DBX_HOST: ${{ secrets.DBX_HOST }}
+      DBX_HTTP_PATH: ${{ secrets.DBX_HTTP_PATH }}
+      DBX_TOKEN: ${{ secrets.DBX_TOKEN }}
+
+    steps:
+
+      - name: Clone Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python Runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dbt Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install dbt-databricks
+
+      - name: Create Runtime dbt Profile
+        run: |
+
+          mkdir -p ~/.dbt
+
+          cat <<EOF > ~/.dbt/profiles.yml
+
+          atliq_commerce:
+
+            target: prod
+
+            outputs:
+
+              prod:
+                type: databricks
+                catalog: atliq_dbx
+                schema: gold
+                host: "$DBX_HOST"
+                http_path: "$DBX_HTTP_PATH"
+                token: "$DBX_TOKEN"
+                threads: 4
+
+          EOF
+
+      - name: Verify Databricks Connection
+        run: |
+          dbt debug --target prod
+
+      - name: Install Packages
+        working-directory: dbt
+        run: |
+          dbt deps
+
+      - name: Build Gold Models
+        working-directory: dbt
+        run: |
+          dbt build --target prod
+
+      - name: Execute Production Tests
+        working-directory: dbt
+        run: |
+          dbt test --target prod
+
+      - name: Deployment Complete
+        run: |
+          echo "Gold layer successfully deployed"

@@ -1,15 +1,12 @@
 {
-    "name": "DS_ADLS_Sink_Bronze",
+    "name": "DS_CSV_Parquet_Bronze",
     "properties": {
         "linkedServiceName": {
             "referenceName": "LS_Atliq_AzureDataLakeStorage",
             "type": "LinkedServiceReference"
         },
         "parameters": {
-            "table_name": {
-                "type": "string"
-            },
-            "folder_date": {
+            "p_target_folder": {
                 "type": "string"
             }
         },
@@ -18,15 +15,11 @@
         "typeProperties": {
             "location": {
                 "type": "AzureBlobFSLocation",
-                "fileName": {
-                    "value": "@{dataset().table_name}_@{formatDateTime(utcNow(),'yyyyMMdd_HHmmss')}.parquet",
-                    "type": "Expression"
-                },
                 "folderPath": {
-                    "value": "@{dataset().table_name}/ingest_date=@{dataset().folder_date}",
+                    "value": "@dataset().p_target_folder",
                     "type": "Expression"
                 },
-                "fileSystem": "bronze"
+                "fileSystem": "lakehouse"
             },
             "compressionCodec": "snappy"
         },

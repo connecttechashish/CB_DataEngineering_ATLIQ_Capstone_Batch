@@ -5,7 +5,7 @@
         "annotations": [],
         "type": "AzureBlobFS",
         "typeProperties": {
-            "url": "https://atliqdatalake.dfs.core.windows.net/"
+            "url": "https://atliqadls.dfs.core.windows.net/"
         }
     }
 }

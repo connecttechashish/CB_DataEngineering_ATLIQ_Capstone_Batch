@@ -3,7 +3,7 @@
     "properties": {
         "activities": [
             {
-                "name": "run_start_at",
+                "name": "Set_Run_Start_Time",
                 "type": "SetVariable",
                 "dependsOn": [],
                 "policy": {
@@ -42,7 +42,7 @@
                         "referenceName": "DS_SQL_Source_OLTP",
                         "type": "DatasetReference",
                         "parameters": {
-                            "schema_name": "etl",
+                            "schema": "etl",
                             "table_name": "control_table"
                         }
                     },
@@ -56,14 +56,14 @@
                     {
                         "activity": "Get_Control_Table",
                         "dependencyConditions": [
-                            "Succeeded"
+                            "Completed"
                         ]
                     }
                 ],
                 "userProperties": [],
                 "typeProperties": {
                     "items": {
-                        "value": "@activity('Get_Control_Table').output.value\n",
+                        "value": "@activity('Get_Control_Table').output.value",
                         "type": "Expression"
                     },
                     "activities": [
@@ -79,7 +79,7 @@
                                 },
                                 "ifFalseActivities": [
                                     {
-                                        "name": "Copy_FUll",
+                                        "name": "Copy_Full",
                                         "type": "Copy",
                                         "dependsOn": [],
                                         "policy": {
@@ -125,7 +125,7 @@
                                                 "referenceName": "DS_SQL_Source_OLTP",
                                                 "type": "DatasetReference",
                                                 "parameters": {
-                                                    "schema_name": "@{item().source_schema}",
+                                                    "schema": "@{item().source_schema}",
                                                     "table_name": "@{item().table_name}"
                                                 }
                                             }
@@ -146,7 +146,7 @@
                                         "type": "SqlServerStoredProcedure",
                                         "dependsOn": [
                                             {
-                                                "activity": "Copy_FUll",
+                                                "activity": "Copy_Full",
                                                 "dependencyConditions": [
                                                     "Succeeded"
                                                 ]
@@ -161,7 +161,7 @@
                                         },
                                         "userProperties": [],
                                         "typeProperties": {
-                                            "storedProcedureName": "etl.usp_update_watermark",
+                                            "storedProcedureName": "[etl].[usp_update_watermark]",
                                             "storedProcedureParameters": {
                                                 "table_name": {
                                                     "value": {
@@ -232,8 +232,14 @@
                                                 "referenceName": "DS_SQL_Source_OLTP",
                                                 "type": "DatasetReference",
                                                 "parameters": {
-                                                    "schema_name": "@{item().source_schema}",
-                                                    "table_name": "@{item().table_name}"
+                                                    "schema": {
+                                                        "value": "@{item().source_schema}",
+                                                        "type": "Expression"
+                                                    },
+                                                    "table_name": {
+                                                        "value": "@{item().table_name}",
+                                                        "type": "Expression"
+                                                    }
                                                 }
                                             }
                                         ],
@@ -268,7 +274,7 @@
                                         },
                                         "userProperties": [],
                                         "typeProperties": {
-                                            "storedProcedureName": "etl.usp_update_watermark",
+                                            "storedProcedureName": "[etl].[usp_update_watermark]",
                                             "storedProcedureParameters": {
                                                 "table_name": {
                                                     "value": {
@@ -304,7 +310,7 @@
             }
         },
         "annotations": [],
-        "lastPublishTime": "2026-08-21T12:36:37Z"
+        "lastPublishTime": "2026-09-30T04:17:57Z"
     },
     "type": "Microsoft.DataFactory/factories/pipelines"
 }

@@ -5,7 +5,7 @@
         "annotations": [],
         "type": "AzureSqlDatabase",
         "typeProperties": {
-            "server": "atliq-sql1.database.windows.net",
+            "server": "atliq-sql.database.windows.net",
             "database": "atliq_commerce",
             "encrypt": "mandatory",
             "trustServerCertificate": false,
