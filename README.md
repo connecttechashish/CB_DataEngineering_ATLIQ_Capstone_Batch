@@ -1,83 +1,140 @@
-# **README.md — AtliQ Commerce Architecture**
+# AtliQ Commerce — End-to-End Data Engineering Capstone
 
-## **Overview**
-AtliQ Commerce uses a modern, cloud‑native data architecture designed to support daily operations (OLTP) and analytical reporting (OLAP). The system separates transactional workloads from analytical workloads and synchronizes them through a nightly pipeline. This ensures fast application performance and reliable business insights.
+An end-to-end batch data platform for **AtliQ Commerce**, a fictional online retailer. It takes raw orders, customers, products and payments from an operational database, plus supplier and marketing flat files, and turns them into a clean star schema that powers a Power BI dashboard — refreshed automatically every night.
 
----
-
-## **Architecture Components**
-
-### **1. OLTP Layer — Azure SQL Database**
-- Stores customer, product, order, order item, and payment data  
-- Fully normalized (3NF) schema  
-- Updated daily using a Python‑based transaction simulator  
-- Optimized for inserts, updates, and real‑time operations  
-- Source of truth for ingestion
-
-### **2. Ingestion Layer — Azure Data Factory (ADF)**
-- Metadata‑driven ingestion using an ETL control table  
-- Extracts OLTP tables and external CSV files  
-- Supports **full** and **incremental** loads  
-- Loads raw data into ADLS Bronze zone  
-- Ensures consistent nightly refresh
-
-### **3. Storage Layer — Azure Data Lake Storage Gen2 (ADLS)**
-- **Bronze Zone:** Raw data exactly as ingested  
-- Acts as the landing zone for all upstream systems  
-- Provides durable, scalable storage for downstream processing
-
-### **4. Processing Layer — Databricks**
-- Converts Bronze → Silver → Gold  
-- **Silver Layer:** Cleaned, standardized, deduplicated tables  
-- **Gold Layer:** Business‑ready fact and dimension tables  
-- Databricks Jobs orchestrate nightly transformations  
-- Gold tables exported as **single‑file Parquet** for Fabric
-
-### **5. Analytics Layer — Microsoft Fabric Lakehouse**
-- Imports Gold Parquet files from ADLS  
-- Creates Lakehouse tables for semantic modeling  
-- Defines relationships and measures for reporting  
-- Serves as the analytical foundation for Power BI
-
-### **6. Reporting Layer — Power BI**
-- Connects directly to Fabric Lakehouse  
-- Provides dashboards answering key business questions:  
-  - Revenue trends  
-  - Top customers  
-  - Product performance  
-  - Marketing effectiveness  
-- Refreshes nightly after Lakehouse updates
+> **Developed by:** Ashish Rijal
 
 ---
 
-## **Nightly Sync Workflow**
-1. OLTP receives new transactions  
-2. ADF ingests OLTP + external data into ADLS Bronze  
-3. Databricks transforms Bronze → Silver → Gold  
-4. Databricks exports Gold tables to ADLS as Parquet  
-5. Fabric Lakehouse refreshes tables  
-6. Power BI refreshes the semantic model and dashboard  
+## 🎯 Purpose of the Project
 
-This ensures the business always sees **fresh, accurate, and consistent data**.
+AtliQ's order data lives in an operational (OLTP) database that isn't suited for reporting, and supplier prices and marketing spend sit in separate CSV files. Leadership has no single, trustworthy view of revenue, margin, or marketing performance.
 
----
+This project builds a **nightly, incremental, idempotent pipeline** that:
 
-## **Technologies Used**
-- **Azure SQL Database** — OLTP storage  
-- **Azure Data Factory** — ingestion pipelines  
-- **Azure Data Lake Storage Gen2** — Bronze storage  
-- **Databricks** — transformation (Silver/Gold)  
-- **Parquet** — export format for Fabric  
-- **Microsoft Fabric Lakehouse** — analytical storage  
-- **Power BI** — reporting and dashboards  
-- **Python** — transaction simulator  
-- **SQL** — OLTP schema + Databricks SQL  
-- **GitHub** — version control
+- Ingests OLTP tables and CSV files into a data lake with a generic, metadata-driven framework
+- Cleans and standardises the data in a Silver layer
+- Models it into a Gold star schema with automated data-quality tests
+- Serves it to Power BI through Microsoft Fabric for business reporting
 
 ---
 
-## **Purpose of This Architecture**
-- Keep OLTP fast and isolated from analytics  
-- Provide a clean, governed data pipeline  
-- Deliver reliable nightly insights  
-- Support scalable reporting for business teams
+## 🏗️ Architecture
+
+![AtliQ Commerce architecture](00_docs/atliq_commerce_architecture.png)
+
+*Vector version: [docs/atliq_commerce_architecture.svg](00_docs/atliq_commerce_architecture.svg)*
+
+```mermaid
+flowchart LR
+    subgraph Sources
+        A[(Azure SQL OLTP<br/>5 tables)]
+        B[Flat files<br/>supplier price · marketing spend]
+    end
+    subgraph Ingestion
+        C[Azure Data Factory<br/>metadata-driven pipelines]
+    end
+    subgraph Lakehouse["Azure Databricks · ADLS Gen2 · Unity Catalog · Delta Lake"]
+        D[Bronze<br/>raw Parquet]
+        E[Silver<br/>clean · merged]
+        F[Gold<br/>star schema]
+    end
+    subgraph Serving
+        G[Microsoft Fabric<br/>OneLake shortcut]
+        H[Power BI dashboard]
+    end
+    A --> C
+    B --> C
+    C --> D
+    D -- PySpark --> E
+    E -- dbt --> F
+    F --> G --> H
+```
+
+### Components
+
+| Layer | Component | Role |
+|---|---|---|
+| **Sources** | Azure SQL Database (OLTP) | `customers`, `products`, `orders`, `order_items`, `payments` |
+| | Flat files (CSV) | `supplier_price_list`, `marketing_spend` landed in ADLS |
+| **Ingestion** | Azure Data Factory | `PL_INGEST_OLTP_TO_BRONZE` (reads `etl.control_table`: full vs. incremental load using watermark columns) and `PL_INGEST_CSV_TO_BRONZE` (reads `dbo.file_control_table`) → Parquet in Bronze, partitioned by `ingest_date` |
+| | Control tables | Metadata that drives which tables/files load, how, and from what watermark |
+| **Storage** | Azure Data Lake Storage Gen2 | `bronze / silver / gold` containers (Delta + Parquet) |
+| **Transform** | Azure Databricks (PySpark) | `NB_Bronze_To_Silver` and `NB_Bronze_To_Silver_CSV` — type casting, de-duplication, validation, MERGE of incremental changes into Delta tables in Unity Catalog |
+| | dbt Core | Gold models: `dim_customer`, `dim_product`, `dim_date`, `fact_sales` (order-item grain) with `unique`, `not_null` and `relationships` tests |
+| **Orchestration** | `PL_Nightly_Sync` (ADF) | Runs OLTP ingest and CSV ingest → both Silver notebooks → triggers the dbt GitHub Action |
+| **CI/CD** | GitHub Actions | Runs dbt build/tests on pull requests (against a CI schema) and deploys to the prod Gold layer |
+| **Serving** | Microsoft Fabric + Power BI | OneLake shortcut to Gold Delta tables; dashboard for revenue, margin and marketing KPIs |
+
+---
+
+## ⏰ Schedule
+
+| Item | Detail |
+|---|---|
+| Trigger | `trigger_Nightly_Sync` (ADF Schedule Trigger) |
+| Frequency | **Daily, every 1 day at 01:00 AM Eastern Time** |
+| Pipeline | `PL_Nightly_Sync` |
+| Load pattern | Incremental via watermark (`updated_at` / `created_at`) — safe to re-run (idempotent) |
+| Flow | OLTP + CSV → Bronze → Silver (PySpark) → Gold (dbt via GitHub Actions) → Power BI |
+
+---
+
+## 🧰 Technologies Used
+
+| Category | Tools |
+|---|---|
+| Cloud | Microsoft Azure |
+| Source database | Azure SQL Database |
+| Storage | Azure Data Lake Storage Gen2 |
+| Ingestion / orchestration | Azure Data Factory |
+| Processing | Azure Databricks, PySpark, Delta Lake, Unity Catalog |
+| Modeling & testing | dbt Core (dbt-databricks) |
+| Reporting | Microsoft Fabric (OneLake), Power BI |
+| CI/CD | Git, GitHub Actions |
+| Languages | SQL, Python |
+
+---
+
+## 🧱 Data Model (Gold)
+
+```
+dim_customer ─┐
+dim_product  ─┼──► fact_sales (one row per order item)
+dim_date     ─┘
+```
+
+`fact_sales` includes `gross_revenue = quantity × item_price`. `dim_product` joins supplier cost to compute `unit_margin`.
+
+---
+
+## 📁 Repository Structure
+
+```
+.
+├── sql/                 # OLTP schema DDL, ETL control tables
+├── adf/                 # ADF pipelines and trigger (JSON)
+├── notebooks/           # Databricks notebooks (Bronze → Silver)
+├── dbt/                 # dbt project: models, sources, tests
+├── .github/workflows/   # CI/CD workflow
+├── docs/                # Architecture diagram, implementation guide
+└── README.md
+```
+
+> Adjust folder names above to match the actual layout of this repo.
+
+---
+
+## 🚀 Getting Started
+
+1. Provision Azure SQL, ADLS Gen2, Data Factory, and a Databricks workspace with Unity Catalog.
+2. Run the DDL scripts and seed the control tables.
+3. Import the ADF pipelines and trigger; configure linked services.
+4. Deploy the Databricks notebooks and configure the dbt `profiles.yml` (via GitHub secrets for CI).
+5. Connect Microsoft Fabric to the Gold container with a OneLake shortcut and build the Power BI report.
+
+---
+
+## 👤 Author
+
+**Ashish Rijal**
