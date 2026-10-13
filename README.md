@@ -22,7 +22,7 @@ This project builds a **nightly, incremental, idempotent pipeline** that:
 ## 🏗️ Architecture
 ![AtliQ Commerce architecture](00_docs/atliq_commerce_architecture_0.png)
 
-![AtliQ Commerce architecture Detailed](00_docs/atliq_commerce_architecture.png)
+*Detailed Architecture version: [00_docs/atliq_commerce_architecture_0.svg](00_docs/atliq_commerce_architecture_0.svg)*
 
 *Vector version: [00_docs/atliq_commerce_architecture.svg](00_docs/atliq_commerce_architecture.svg)*
 
