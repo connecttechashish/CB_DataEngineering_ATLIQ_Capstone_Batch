@@ -2,7 +2,7 @@
 
 An end-to-end batch data platform for **AtliQ Commerce**, a fictional online retailer. It takes raw orders, customers, products and payments from an operational database, plus supplier and marketing flat files, and turns them into a clean star schema that powers a Power BI dashboard — refreshed automatically every night.
 
-> **Developed by:** Ashish Rijal
+> **Created & developed by:** Ashish Rijal
 
 ---
 
@@ -23,7 +23,7 @@ This project builds a **nightly, incremental, idempotent pipeline** that:
 
 ![AtliQ Commerce architecture](00_docs/atliq_commerce_architecture.png)
 
-*Vector version: [docs/atliq_commerce_architecture.svg](00_docs/atliq_commerce_architecture.svg)*
+*Vector version: [00_docs/atliq_commerce_architecture.svg](00_docs/atliq_commerce_architecture.svg)*
 
 ```mermaid
 flowchart LR
@@ -111,17 +111,19 @@ dim_date     ─┘
 ## 📁 Repository Structure
 
 ```
-.
-├── sql/                 # OLTP schema DDL, ETL control tables
-├── adf/                 # ADF pipelines and trigger (JSON)
-├── notebooks/           # Databricks notebooks (Bronze → Silver)
-├── dbt/                 # dbt project: models, sources, tests
-├── .github/workflows/   # CI/CD workflow
-├── docs/                # Architecture diagram, implementation guide
+Eng_atliq_capstone/
+├── .github/                              # GitHub Actions CI/CD workflow (dbt build and tests)
+├── 00_docs/                              # Architecture diagram, implementation guide
+├── 01_source_ADLS_OLTP/                  # Source layer: OLTP schema DDL, ETL control tables, CSV files
+├── 02_ingestion_AzureDataFactory_ADF/    # ADF pipelines and nightly schedule trigger (JSON)
+├── 03_silver_Azure_Databricks/           # Databricks notebooks (Bronze → Silver, PySpark)
+├── 04_gold_dbt/                          # dbt project: Gold models, sources, tests
+├── 05_report_Microsoft_Fabric/           # Fabric / Power BI reporting assets
+├── .gitignore
 └── README.md
 ```
 
-> Adjust folder names above to match the actual layout of this repo.
+The numbered folders follow the order of the data flow, from source to report.
 
 ---
 
@@ -132,9 +134,3 @@ dim_date     ─┘
 3. Import the ADF pipelines and trigger; configure linked services.
 4. Deploy the Databricks notebooks and configure the dbt `profiles.yml` (via GitHub secrets for CI).
 5. Connect Microsoft Fabric to the Gold container with a OneLake shortcut and build the Power BI report.
-
----
-
-## 👤 Author
-
-**Ashish Rijal**
