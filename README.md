@@ -28,8 +28,6 @@ This project builds a **nightly, incremental, idempotent pipeline** that:
   <img src="00_docs/atliq_commerce_architecture.png" alt="AtliQ Commerce architecture diagram" width="100%">
 </p>
 
-*Vector version: [00_docs/atliq_commerce_architecture.svg](00_docs/atliq_commerce_architecture.svg)*
-
 ```mermaid
 flowchart LR
     subgraph Sources
